@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.views.generic import CreateView,ListView
 from .forms import UserForm
 from django.urls import reverse_lazy
+from RoomManagement.models import Seat, SeatRequest
 from .models import Profile as Profile,Coffee,CoffeeLog,Startup
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect
@@ -10,10 +11,10 @@ from django.contrib.auth import login as auth_login, logout as auth_logout, auth
 from django.core import serializers
 from django.forms.models import model_to_dict
 from django.views.decorators.csrf import csrf_exempt
-from datetime import date
+from datetime import datetime
+from startups.models import Mentoring
+from django.shortcuts import get_object_or_404
 
-import datetime
-import base64
 
 
 class SignUp(CreateView):
@@ -85,10 +86,42 @@ def login(request):
     return render(request, 'login.html')
 
 @login_required
+@csrf_exempt
 def dashboard(request):
+    if request.method=="POST":
+        user_id = request.POST.get('userid')
+        
+        seat_requests = SeatRequest.objects.filter(request_from__id=user_id, request_to__id=request.user.id)
+        print(seat_requests.count())
+        for seat_request in seat_requests:
+            seat_request.approved = True
+            seat_request.save()
+
     user = request.user
+    mentor = user.profile.all()[0].mentor
+    if mentor:
+        mentoring_list = []
+        if user.profile.all()[0].mentor:
+            mentor_requests = Mentoring.objects.filter(mentor=user,status=0)
+            
+            for mentor_request in mentor_requests:
+                mentoring_list.append(model_to_dict(mentor_request.startup))
+    
+    seats = SeatRequest.objects.all().filter(request_to=request.user, approved=False)
+
+    senders = []
+    for seat in seats:
+        senders.append(model_to_dict(seat.request_from))
     user_dict = model_to_dict(user)
-    return render(request, 'dashboard.html', {'user':user_dict})
+    if not request.user.is_authenticated:
+        status = -1
+        #context["status"] = -1
+    else:    
+        #context["status"] = reminder(self.request.user.pk)
+        status = reminder(request.user.pk)
+        print(status)
+    return render(request, 'dashboard.html', {'user':user_dict, 'senders':senders,'status':status})
+    
 
 @login_required
 def get_coffee(request):
@@ -98,29 +131,27 @@ def get_coffee(request):
     else:
         coffee =  Coffee.objects.get(user=request.user)
     coffee_log = CoffeeLog()
-    time = datetime.datetime.now()
+    time = datetime.today()
     datestring = str(time)
     coffee.total_coffee = coffee.total_coffee + 1 
     coffee.save()
-    token = str(request.user.username)+datestring
-    token = encode('COFFEE', token)
+    token = str(request.user.username)+ datestring[:10]  + str(coffee.total_coffee)
     coffee_log.token = token
     coffee_log.user = request.user
     
-    print("free = ",coffee.free_coffee, " | total :",coffee.total_coffee)
     if coffee.total_coffee < coffee.free_coffee:
         free_coffee = True
         coffee_left = coffee.free_coffee - coffee.total_coffee
-        amount_due = 0
     else:
         free_coffee = False
         coffee_extra = coffee.total_coffee - coffee.free_coffee
         coffee.amount_due = coffee_extra*15
-        amount_due = coffee.amount_due
         coffee.save()
         coffee_left = 0
     
     coffee_log.save()
+    wallet = request.user.wallet
+    amount_due = wallet.coffee_total
     return render(request,'getcoffee.html',context={'token':coffee_log.token,'free':free_coffee,'left':coffee_left,'amount_due':amount_due})
 
 @csrf_exempt
@@ -134,20 +165,27 @@ def verify_coffee(request):
     else:
         return render(request,'verify_coffee.html',context={'token':True,'sent':1})
 
+@csrf_exempt
+@login_required
+def confirm_mentor(request, pk):
 
-def encode(key, clear):
-    enc = []
-    for i in range(len(clear)):
-        key_c = key[i % len(key)]
-        enc_c = chr((ord(clear[i]) + ord(key_c)) % 256)
-        enc.append(enc_c)
-    return base64.urlsafe_b64encode("".join(enc).encode()).decode()
+    startup = Startup.objects.get(pk=pk)
+    user = request.user
 
-def decode(key, enc):
-    dec = []
-    enc = base64.urlsafe_b64decode(enc).decode()
-    for i in range(len(enc)):
-        key_c = key[i % len(key)]
-        dec_c = chr((256 + ord(enc[i]) - ord(key_c)) % 256)
-        dec.append(dec_c)
-    return "".join(dec)
+    mentor_requests = Mentoring.objects.filter(startup=startup, mentor=user)
+    
+    for mentor_request in mentor_requests:
+        
+        mentor_request.status = 1
+        mentor_request.action = user.pk
+        mentor_request.save()
+    return HttpResponseRedirect(reverse('accounts:dashboard')) 
+
+
+def reminder(pk):
+    user = User.objects.get(id=pk)
+    status=0
+    print(user.wallet.balance)
+    if user.wallet.balance<100:
+        status=1
+    return status

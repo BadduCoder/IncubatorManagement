@@ -41,11 +41,18 @@
         <link rel="stylesheet" href="{% static "css/style.css" %}">
 
         <!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>-->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/notify/0.4.2/notify.js"></script>
 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/notify/0.4.2/notify.min.js"></script>
     </head>
     <body>
-
-
+        {% if status == 1 %}
+            <script>
+                $.notify('Your Balance is below $100', 'danger');
+            </script>
+            ASdasfasf
+        {% endif %}
+        
         <!--
         ==================================================
         Header Section Start
@@ -78,12 +85,6 @@
                                 <a href="{% url 'home' %}" >Home</a>
                             </li>
 
-                            {% if request.user.username %}
-                                <li>
-                                    <a href="{% url 'startups:create_log' %}" >Create Log</a>
-                                </li>
-                            {% endif %}
-
                             <li class="dropdown">
                                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">Startups <span class="caret"></span></a>
                                     <div class="dropdown-menu">
@@ -97,18 +98,19 @@
                                         </ul>
                                     </div>
                                 </li>
-                                
+                            {% if request.user.username %}    
                             <li class="dropdown">
                                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Services <span class="caret"></span></a>
                                 <div class="dropdown-menu">
                                     <ul>
                                         <li><a href="{% url 'accounts:coffee'%}">Coffee</a></li>
-                                        {% if request.user.username %}
-                                        <li><a href="{% url 'rooms:book_room'%}">Book Room</a></li>
-                                        {% endif %}
+                                        
+                                        <li><a href="{% url 'Room:room_list'%}">Book Room</a></li>
+                                        
                                     </ul>
                                 </div>
                             </li>
+                            {% endif %}
                             <li class="dropdown">
                                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Event <span class="caret"></span></a>
                                 <div class="dropdown-menu">
@@ -118,16 +120,18 @@
                                     </ul>
                                 </div>
                             </li>
+                            {% if request.user.username %}
                             <li class="dropdown">
-                                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Blog <span class="caret"></span></a>
+                                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Extras <span class="caret"></span></a>
                                 <div class="dropdown-menu">
                                     <ul>
-                                        <li><a href="blog-fullwidth.html">Blog Full</a></li>
-                                        <li><a href="blog-left-sidebar.html">Blog Left sidebar</a></li>
-                                        <li><a href="blog-right-sidebar.html">Blog Right sidebar</a></li>
+                                        <li><a href="{% url 'accounts:dashboard' %}">Dashboard</a></li>
+                                        <li><a href="{% url 'startups:create_log' %}">Create Log</a></li>
+                                        <li><a href="{% url 'wallet:get_wallet' %}">Wallet</a></li>
                                     </ul>
                                 </div>
                             </li>
+                            {% endif %}
                             <li><a href="{% url 'contact:send-message' %}">Contact</a></li>
                             {% if not request.user.username %}
                                 <li><a href="{% url 'accounts:login' %}"> Login</a></li>
@@ -140,7 +144,7 @@
                 <!-- /main nav -->
             </div>
         </header>
-        
+
 {% block midcontent %}
 <!--
 ==================================================
@@ -217,6 +221,11 @@ Portfolio Section Start
             <h1 class="title wow fadeInDown" data-wow-delay=".3s">OUR MENTORS</h1><hr>
             
         </div>
+        <div>
+            {% if message %}
+                <span class="well-sm" style="margin:5px; background-color:#6ba040">{{message}}</span>
+            {% endif %}
+        </div>
         <div class="row">
         {% for profile in profiles %}
             <div class="col-sm-4 col-xs-12">
@@ -226,16 +235,15 @@ Portfolio Section Start
                         <div class="overlay">
                             <div class="buttons">
                                 <a rel="gallery" class="fancybox" href="https://www.linkedin.com">LinkedIn</a>
-                                <a target="_blank" href="#">Profile</a>
+                                
+                                <a href="{% url 'startups:apply-mentor' pk=profile.user.pk %}">Apply</a>
+                                
                             </div>
                         </div>
                     </div>
                     <figcaption>
                     <h4>
-                        
                         {{profile.user.username}}
-                    
-                    
                     </h4>
                     <p>
                         
@@ -346,6 +354,7 @@ Portfolio Section Start
 </section> <!-- /#feature -->
 
 {% endblock %}
+
             <!--
             ==================================================
             Call To Action Section Start
@@ -357,7 +366,7 @@ Portfolio Section Start
                             <div class="block">
                                 <h2 class="title wow fadeInDown" data-wow-delay=".3s" data-wow-duration="500ms">ANY QUERIES ?</h1>
                                 <p class="wow fadeInDown" data-wow-delay=".5s" data-wow-duration="500ms">React out to us. Drop us a message </p>
-                                <a href="contact.html" class="btn btn-default btn-contact wow fadeInDown" data-wow-delay=".7s" data-wow-duration="500ms">Contact Us</a>
+                                <a href="{% url 'contact:send-message'%}" class="btn btn-default btn-contact wow fadeInDown" data-wow-delay=".7s" data-wow-duration="500ms">Contact Us</a>
                             </div>
                         </div>
                         
